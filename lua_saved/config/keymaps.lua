@@ -5,4 +5,3 @@
 local keymap = vim.keymap -- for conciseness
 
 keymap.set("i", "jk", "<ESC>") -- in insert mode "jk" is set to be <ESC> so it takes you back to N mode
--- keymap.set("n", "<leader>we", "<C-w>=", { desc = "equal width and height" }) -- make split windows equal width & height
