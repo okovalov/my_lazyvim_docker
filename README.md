@@ -407,6 +407,22 @@ docker compose down -v
 4. **Customize config**: Edit files in `lua_saved/` and rebuild (see "Creating Your Own Customized Version" for details)
 5. **Rebuild image**: After configuration changes
 
+For quicker (more convenient) launch, here is an example of the zsh alias.
+
+```bash
+
+# docker version of nvim
+alias nvim-docker='docker run -it --rm \
+  -v "$(pwd):/workspace" \
+  -v nvim_config:/home/developer/.config/nvim \
+  -v nvim_share:/home/developer/.local/share/nvim \
+  -v nvim_state:/home/developer/.local/state/nvim \
+  -v nvim_cache:/home/developer/.cache/nvim \
+  -w /workspace \
+  -e TERM=xterm-256color \
+  my-neovim nvim'
+```
+
 ## Repository
 
 - **GitHub**: https://github.com/okovalov/my_lazyvim_docker
