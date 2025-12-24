@@ -1,7 +1,8 @@
 #!/usr/bin/bash
 # entrypoint.sh
 
-CONFIG_DIR="/home/developer/.config/nvim"
+CONFIG_DIR_ROOT="/home/developer/.config"
+CONFIG_DIR="$CONFIG_DIR_ROOT/nvim"
 
 # Check if config directory is empty (first run of container with this volume)
 if [ -z "$(ls -A $CONFIG_DIR 2>/dev/null)" ]; then
@@ -19,6 +20,10 @@ if [ -z "$(ls -A $CONFIG_DIR 2>/dev/null)" ]; then
     # Copy recursively
     cp -r /tmp/lua_saved/* "$CONFIG_DIR/lua/" 2>/dev/null || true
     echo "Custom config copied!"
+
+    # lazygit
+    mkdir -p "$CONFIG_DIR_ROOT/lazygit"
+    cp /tmp/lazygit_config.yml $CONFIG_DIR_ROOT/lazygit/config.yml
   fi
 
   echo "=== Initialization complete! ==="

@@ -4,7 +4,7 @@ ARG USER_ID=1000
 ARG GROUP_ID=1000
 
 RUN dnf copr enable -y dejan/lazygit && \
-  dnf install -y git \
+  dnf install -y git lazygit git-delta \
   gcc \
   gcc-c++ \
   make \
@@ -32,6 +32,8 @@ RUN mkdir -p \
 
 # Copy your saved Lua config into the image
 COPY --chown=developer:developer lua_saved /tmp/lua_saved
+
+COPY --chown=developer:developer lazygit_config.yml /tmp/
 
 # Copy entrypoint script
 COPY --chown=developer:developer entrypoint.sh /home/developer/entrypoint.sh
