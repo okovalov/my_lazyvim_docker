@@ -1,0 +1,26 @@
+services:
+  my-neovim:
+    build:
+      context: .
+      args:
+        - USER_ID=${USER_ID:-1000}
+        - GROUP_ID=${GROUP_ID:-1000}
+    image: my-neovim
+    working_dir: /workspace
+    volumes:
+      - ".:/workspace"
+      # Named volumes for persistence
+      - nvim_config:/home/developer/.config/nvim
+      - nvim_share:/home/developer/.local/share/nvim
+      - nvim_state:/home/developer/.local/state/nvim
+      - nvim_cache:/home/developer/.cache/nvim
+    tty: true
+    stdin_open: true
+    environment:
+      - TERM=xterm-256color
+
+volumes:
+  nvim_config:
+  nvim_share:
+  nvim_state:
+  nvim_cache:
