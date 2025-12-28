@@ -5,6 +5,7 @@ ARG GROUP_ID=1000
 
 RUN dnf copr enable -y dejan/lazygit && \
   dnf install -y git lazygit git-delta \
+  fzf python3 wget unzip \
   gcc \
   gcc-c++ \
   make \
@@ -39,26 +40,3 @@ COPY --chown=developer:developer lazygit_config.yml /tmp/
 COPY --chown=developer:developer entrypoint.sh /home/developer/entrypoint.sh
 RUN chmod +x /home/developer/entrypoint.sh
 
-# RUN if [ -z "$(ls -A /home/developer/.config/nvim 2>/dev/null)" ]; then \
-#   echo "Initializing LazyVim starter config..." && \
-#   git clone https://github.com/LazyVim/starter /home/developer/.config/nvim && \
-#   rm -rf /home/developer/.config/nvim/.git; \
-#   fi
-
-# Initialize LazyVim if config is empty and copy user plugins and settings
-# RUN if [ -z "$(ls -A /home/developer/.config/nvim 2>/dev/null)" ]; then \
-#   echo "Initializing LazyVim starter config..." && \
-#   git clone https://github.com/LazyVim/starter /home/developer/.config/nvim && \
-#   rm -rf /home/developer/.config/nvim/.git; \
-#   \
-#   echo "Adding custom Lua configuration..." && \
-#   if [ -d "/tmp/lua_saved" ]; then \
-#   mkdir -p /home/developer/.config/nvim/lua; \
-#   cp -r /tmp/lua_saved/* /home/developer/.config/nvim/lua/ 2>/dev/null || true; \
-#   fi; \
-#   fi
-
-# Use entrypoint script
-ENTRYPOINT ["/home/developer/entrypoint.sh"]
-
-CMD ["nvim"]
