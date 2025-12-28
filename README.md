@@ -6,7 +6,7 @@ A Docker container providing a fully configured Neovim development environment b
 
 - **Neovim with LazyVim**: Modern Neovim distribution with lazy-loaded plugins, (inluding OpenCode and Avante)
 - **Custom Configuration**: Pre-configured with personal keymaps, options, and plugins
-- **Developer Tools**: Includes `lazygit`, `git-delta`, `fd-find`, `ripgrep`, `tree-sitter-cli`
+- **Developer Tools**: Includes `lazygit`, `git-delta`, `fd-find`, `ripgrep`, `tree-sitter-cli`, `fzf`, `python3`, `wget`, `unzip`
 - **Persistent Storage**: Docker volumes for Neovim configuration, share, state, and cache
 - **Automatic Initialization**: Entrypoint script clones LazyVim and applies custom config on first run
 - **User Mapping**: Runs as non-root user with matching UID/GID for file permissions
@@ -22,7 +22,7 @@ A Docker container providing a fully configured Neovim development environment b
 If you just want to try the container with your current directory:
 
 ```bash
-docker run -it --rm -v $(pwd):/workspace okovalov/my-neovim:1.0
+docker run -it --rm -v $(pwd):/workspace okovalov/my-neovim:latest
 ```
 
 **Important**: This image includes the custom plugins and configurations from this repository baked into the container. On first run, it initializes with LazyVim starter and copies these custom settings.
@@ -43,7 +43,7 @@ You can pull the pre-built image directly from Docker Hub:
 
 ```bash
 docker pull okovalov/my-neovim:1.0
-docker run -it --rm -v $(pwd):/workspace okovalov/my-neovim:1.0
+docker run -it --rm -v $(pwd):/workspace okovalov/my-neovim:latest
 ```
 
 **Important Notes**:
@@ -103,6 +103,7 @@ ARG GROUP_ID=1000
 
 RUN dnf copr enable -y dejan/lazygit && \
   dnf install -y git lazygit git-delta \
+  fzf python3 wget unzip \
   gcc \
   gcc-c++ \
   make \
@@ -137,10 +138,6 @@ COPY --chown=developer:developer lazygit_config.yml /tmp/
 COPY --chown=developer:developer entrypoint.sh /home/developer/entrypoint.sh
 RUN chmod +x /home/developer/entrypoint.sh
 
-# Use entrypoint script
-ENTRYPOINT ["/home/developer/entrypoint.sh"]
-
-CMD ["nvim"]
 ```
 
 ### docker-compose.yml
@@ -158,58 +155,67 @@ services:
     volumes:
       - ".:/workspace"
       # Named volumes for persistence
-      - nvim_config:/home/developer/.config/nvim
-      - nvim_share:/home/developer/.local/share/nvim
-      - nvim_state:/home/developer/.local/state/nvim
-      - nvim_cache:/home/developer/.cache/nvim
+      - dev_config:/home/developer/.config
+      - dev_share:/home/developer/.local/share
+      - dev_state:/home/developer/.local/state
+      - dev_cache:/home/developer/.cache
     tty: true
+    command: ["/bin/bash", "-c", "/home/developer/entrypoint.sh && nvim"]
     stdin_open: true
     environment:
       - TERM=xterm-256color
 
 volumes:
-  nvim_config:
-  nvim_share:
-  nvim_state:
-  nvim_cache:
+  dev_config:
+  dev_share:
+  dev_state:
+  dev_cache:
 ```
 
 ### entrypoint.sh
 
 ```bash
 #!/usr/bin/bash
-# entrypoint.sh
 
-CONFIG_DIR_ROOT="/home/developer/.config"
-CONFIG_DIR="$CONFIG_DIR_ROOT/nvim"
+CONFIG_DIR="/home/developer/.config/nvim"
+SHARE_DIR="/home/developer/.local/share/nvim"
+STATE_DIR="/home/developer/.local/state/nvim"
+CACHE_DIR="/home/developer/.cache/nvim"
 
-# Check if config directory is empty (first run of container with this volume)
-if [ -z "$(ls -A $CONFIG_DIR 2>/dev/null)" ]; then
-  echo "=== First run: Initializing LazyVim with custom config ==="
+# We need to check if the volume was just created and needs initialization
+if [ ! -d "$CONFIG_DIR/lua" ]; then
+  echo "=== First run: Initializing LazyVim with default config ==="
 
-  # Clone LazyVim
+  # Remove existing content if any (volume might be empty but dir exists)
+  rm -rf "$CONFIG_DIR" 2>/dev/null || true
+  rm -rf "$SHARE_DIR" 2>/dev/null || true
+  rm -rf "$STATE_DIR" 2>/dev/null || true
+  rm -rf "$CACHE_DIR" 2>/dev/null || true
+
   git clone https://github.com/LazyVim/starter "$CONFIG_DIR"
+
   rm -rf "$CONFIG_DIR/.git"
 
-  # Copy custom files if they exist
-  if [ -d "/tmp/lua_saved" ]; then
-    echo "Copying custom configuration from /tmp/lua_saved..."
-    # Create lua directory if it doesn't exist
-    mkdir -p "$CONFIG_DIR/lua"
-    # Copy recursively
-    cp -r /tmp/lua_saved/* "$CONFIG_DIR/lua/" 2>/dev/null || true
-    echo "Custom config copied!"
-
-    # lazygit
-    mkdir -p "$CONFIG_DIR_ROOT/lazygit"
-    cp /tmp/lazygit_config.yml $CONFIG_DIR_ROOT/lazygit/config.yml
-  fi
-
-  echo "=== Initialization complete! ==="
+  echo "=== Default Initialization complete! ==="
 fi
 
-# Execute the main command (nvim)
-exec "$@"
+if [ -d "/tmp/lua_saved" ]; then
+  echo "Copying custom configuration from /tmp/lua_saved..."
+  mkdir -p "$CONFIG_DIR/lua"
+
+  # Use rsync or copy with overwrite
+  rsync -a /tmp/lua_saved/ "$CONFIG_DIR/lua/" 2>/dev/null ||
+    cp -r /tmp/lua_saved/* "$CONFIG_DIR/lua/" 2>/dev/null || true
+
+  # lazygit config
+  mkdir -p "/home/developer/.config/lazygit"
+
+  if [ -f "/tmp/lazygit_config.yml" ]; then
+    cp /tmp/lazygit_config.yml "/home/developer/.config/lazygit/config.yml"
+  fi
+
+  echo "=== Custom Initialization complete! ==="
+fi
 ```
 
 ### lazygit_config.yml
@@ -388,10 +394,10 @@ docker push yourusername/my-neovim --all-tags
 
 Four named volumes preserve Neovim state between container restarts:
 
-1. `nvim_config`: Neovim configuration files
-2. `nvim_share`: Plugin installations and shared data
-3. `nvim_state`: Session and state information
-4. `nvim_cache`: Cache files for faster startup
+1. `dev_config`: Neovim configuration files
+2. `dev_share`: Plugin installations and shared data
+3. `dev_state`: Session and state information
+4. `dev_cache`: Cache files for faster startup
 
 To reset the environment, remove the volumes:
 
@@ -414,10 +420,10 @@ For quicker (more convenient) launch, here is an example of the zsh alias.
 # docker version of nvim
 alias nvim-docker='docker run -it --rm \
   -v "$(pwd):/workspace" \
-  -v nvim_config:/home/developer/.config/nvim \
-  -v nvim_share:/home/developer/.local/share/nvim \
-  -v nvim_state:/home/developer/.local/state/nvim \
-  -v nvim_cache:/home/developer/.cache/nvim \
+  -v dev_config:/home/developer/.config \
+  -v dev_share:/home/developer/.local/share \
+  -v dev_state:/home/developer/.local/state \
+  -v dev_cache:/home/developer/.cache \
   -w /workspace \
   -e TERM=xterm-256color \
   my-neovim nvim'
